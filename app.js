@@ -1,43 +1,94 @@
 const express = require('express');
+const bodyParser = require('body-parser');
+const jwt = require('jsonwebtoken');
+const bcrypt = require('bcryptjs');
 const mysql = require('mysql2');
+const axios = require('axios');  // Agrega axios para la validación del captcha
+const loginRoutes = require('./routes/auth');
+const clienteRoutes = require('./routes/clientes');
+const cors = require('cors');
+
+
 const app = express();
-const port = 3000;
+app.use(cors());
+app.use(bodyParser.json());
 
-// Configuración de conexión a MySQL
-const connection = mysql.createConnection({
+const SECRET_KEY = 'mercurio';
+const RECAPTCHA_SECRET = '6LchcloqAAAAALwhQ-dbEvhq7lcr8YG-uIi9il8f';  // Añade tu clave secreta de reCAPTCHA
+
+// Conexión a la base de datos
+const db = mysql.createConnection({
     host: 'localhost',
-    user: 'root', // Cambia a tu usuario de MySQL
-    password: 'Oscar*780917', // Cambia a tu contraseña
-    database: 'mercurio' // Cambia a tu base de datos
+    user: 'root',
+    password: 'Oscar*780917',
+    database: 'mercurio',
 });
 
-// Conectar a la base de datos MySQL
-connection.connect((err) => {
-    if (err) {
-        console.error('Error al conectar a MySQL: ', err);
-        return;
-    }
-    console.log('Conectado a la base de datos MySQL');
-});
+// Autenticación de usuario con validación de reCAPTCHA
+app.post('/login', async (req, res) => {
+    const { email, pass, captchaToken } = req.body;
 
-// Middleware para JSON
-app.use(express.json());
+    // Verificación del reCAPTCHA
+    try {
+        const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
+            params: {
+                secret: RECAPTCHA_SECRET,
+                response: captchaToken
+            }
+        });
 
-// Ruta para obtener pacientes desde MySQL
-app.get('/api/pacientes', (req, res) => {
-    const sql = 'SELECT * FROM cliente';
-    console.log(sql);
-    connection.query(sql, (err, results) => {
-        if (err) {
-            console.error(err);
-            res.status(500).send('Error en el servidor');
-            return;
+        if (!response.data.success) {
+            return res.status(400).send({ success: false, message: 'Captcha no válido.' });
         }
-        res.json(results);
+
+    } catch (error) {
+        return res.status(500).send({ success: false, message: 'Error en la validación de Captcha.' });
+    }
+
+    // Verificación del email y la contraseña después de validar el captcha
+    const query = 'SELECT * FROM usuarios WHERE email = ?';
+    db.query(query, [email], (err, results) => {
+        if (err) return res.status(500).send('Error en el servidor.');
+        if (results.length === 0) return res.status(404).send('Usuario no encontrado.');
+
+        const user = results[0];
+        bcrypt.compare(pass, user.pass.toString(), (err, isMatch) => {
+            if (!isMatch) return res.status(401).send('Contraseña incorrecta.');
+
+            const token = jwt.sign(
+                { idusuario: user.idusuario, id_rol: user.id_rol },
+                SECRET_KEY,
+                { expiresIn: '1h' }
+            );
+
+            res.json({ token, id_rol: user.id_rol });
+        });
     });
 });
 
-// Iniciar el servidor
-app.listen(port, () => {
-    console.log(`Servidor escuchando en http://localhost:${port}`);
+// Middleware para proteger rutas
+function verifyToken(req, res, next) {
+    const token = req.headers['authorization'];
+    if (!token) return res.status(403).send('Token requerido.');
+
+    jwt.verify(token, SECRET_KEY, (err, decoded) => {
+        if (err) return res.status(500).send('Token inválido.');
+        req.userId = decoded.idusuario;
+        req.userRole = decoded.id_rol;
+        next();
+    });
+}
+
+// Ruta protegida (solo para roles específicos)
+app.get('/protected', verifyToken, (req, res) => {
+    if (req.userRole === 1) {
+        res.send('Acceso permitido para superadmin.');
+    } else {
+        res.status(403).send('Acceso denegado.');
+    }
+});
+app.use('/api/clientes', clienteRoutes);
+
+app.listen(3000, () => {
+    console.log('Servidor corriendo en el puerto 3000');
 });
