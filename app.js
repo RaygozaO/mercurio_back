@@ -7,6 +7,7 @@ const axios = require('axios');  // Agrega axios para la validación del captcha
 const loginRoutes = require('./routes/auth');
 const clienteRoutes = require('./routes/clientes');
 const cors = require('cors');
+require('dotenv').config();
 
 
 const app = express();
