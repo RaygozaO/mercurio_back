@@ -14,15 +14,15 @@ const app = express();
 app.use(cors());
 app.use(bodyParser.json());
 
-const SECRET_KEY = 'mercurio';
-const RECAPTCHA_SECRET = '6LchcloqAAAAALwhQ-dbEvhq7lcr8YG-uIi9il8f';  // Añade tu clave secreta de reCAPTCHA
+const SECRET_KEY = process.env.SECRET_KEY;
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 
 // Conexión a la base de datos
 const db = mysql.createConnection({
-    host: 'localhost',
-    user: 'root',
-    password: 'Oscar*780917',
-    database: 'mercurio',
+    host: process.env.DB_HOST,
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    database: process.env.DB_NAME,
 });
 
 // Autenticación de usuario con validación de reCAPTCHA
