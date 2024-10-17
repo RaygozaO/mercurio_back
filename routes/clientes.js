@@ -14,7 +14,6 @@ router.get('/colonias/:codigoPostal', async (req, res) => {
         JOIN municipio mun ON col.id_municipio = mun.idmunicipio
         JOIN entidadfederativa ent ON mun.id_entidadfederativa = ent.identidadfederativa
         WHERE cp.codigopostal = ?`;
-
     try {
         const [results] = await db.query(domicilioQuery, [codigoPostal]);
         console.log('Resultados de la consulta:', results); // Log de resultados
