@@ -11,7 +11,15 @@ require('dotenv').config();
 
 
 const app = express();
-app.use(cors());
+const corsOptions = {
+    origin: 'http://localhost:4200', // Cambia esto al origen de tu frontend
+    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
+    credentials: true, // Permitir cookies
+    optionsSuccessStatus: 204 // Para navegadores antiguos
+};
+
+app.use(cors(corsOptions));
+
 app.use(bodyParser.json());
 
 const SECRET_KEY = process.env.SECRET_KEY;
