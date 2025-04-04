@@ -11,14 +11,12 @@ require('dotenv').config();
 
 
 const app = express();
-const corsOptions = {
-    origin: 'http://localhost:4200', // Cambia esto al origen de tu frontend
+app.use(cors({
+    origin: 'https://farmacia-mercurio', // Cambia esto al origen de tu frontend
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true, // Permitir cookies
     optionsSuccessStatus: 204 // Para navegadores antiguos
-};
-
-app.use(cors(corsOptions));
+}));
 
 app.use(bodyParser.json());
 
@@ -98,6 +96,6 @@ app.get('/protected', verifyToken, (req, res) => {
 });
 app.use('/api/clientes', clienteRoutes);
 
-app.listen(3000, () => {
+app.listen(3000,'0.0.0.0', () => {
     console.log('Servidor corriendo en el puerto 3000');
 });
