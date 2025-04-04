@@ -27,7 +27,6 @@ exports.login = (req, res) => {
     });
 };
 // Función para registrar (solo superadmin debería tener acceso)
-//funciones nuevas
 exports.register = (req, res) => {
     const { nombreusuario, email, pass, id_rol } = req.body;
     const hashedPass = bcrypt.hashSync(pass, 8);
