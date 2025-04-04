@@ -27,6 +27,7 @@ exports.login = (req, res) => {
     });
 };
 // Función para registrar (solo superadmin debería tener acceso)
+//agregando jenkisn otra vez
 exports.register = (req, res) => {
     const { nombreusuario, email, pass, id_rol } = req.body;
     const hashedPass = bcrypt.hashSync(pass, 8);
