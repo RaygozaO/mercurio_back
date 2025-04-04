@@ -26,7 +26,6 @@ exports.login = (req, res) => {
         });
     });
 };
-//agregando una prueba en jenkins
 // Función para registrar (solo superadmin debería tener acceso)
 exports.register = (req, res) => {
     const { nombreusuario, email, pass, id_rol } = req.body;
