@@ -3,27 +3,28 @@ const bodyParser = require('body-parser');
 const jwt = require('jsonwebtoken');
 const bcrypt = require('bcryptjs');
 const mysql = require('mysql2');
-const axios = require('axios');  // Agrega axios para la validación del captcha
-const loginRoutes = require('./routes/auth');
-const clienteRoutes = require('./routes/clientes');
+const axios = require('axios');
 const cors = require('cors');
 require('dotenv').config();
 
+// Importar rutas
+const loginRoutes = require('./routes/auth');
+const clienteRoutes = require('./routes/clientes');
 
 const app = express();
+
+// CORS
 app.use(cors({
-    origin: 'https://farmacia-mercurio', // Cambia esto al origen de tu frontend
+    origin: ['http://localhost:4200', 'https://farmacia-mercurio'],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
-    credentials: true, // Permitir cookies
-    optionsSuccessStatus: 204 // Para navegadores antiguos
+    credentials: true,
+    optionsSuccessStatus: 204
 }));
 
+// Middleware
 app.use(bodyParser.json());
 
-const SECRET_KEY = process.env.SECRET_KEY;
-const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
-
-// Conexión a la base de datos
+// Base de datos
 const db = mysql.createConnection({
     host: process.env.DB_HOST,
     user: process.env.DB_USER,
@@ -31,11 +32,22 @@ const db = mysql.createConnection({
     database: process.env.DB_NAME,
 });
 
-// Autenticación de usuario con validación de reCAPTCHA
+db.connect((err) => {
+    if (err) {
+        console.error('Error al conectar con la base de datos:', err);
+    } else {
+        console.log('Conectado a la base de datos');
+    }
+});
+
+// Constantes
+const SECRET_KEY = process.env.SECRET_KEY;
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
+
+// Login con reCAPTCHA
 app.post('/login', async (req, res) => {
     const { email, pass, captchaToken } = req.body;
 
-    // Verificación del reCAPTCHA
     try {
         const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
             params: {
@@ -47,12 +59,10 @@ app.post('/login', async (req, res) => {
         if (!response.data.success) {
             return res.status(400).send({ success: false, message: 'Captcha no válido.' });
         }
-
     } catch (error) {
         return res.status(500).send({ success: false, message: 'Error en la validación de Captcha.' });
     }
 
-    // Verificación del email y la contraseña después de validar el captcha
     const query = 'SELECT * FROM usuarios WHERE email = ?';
     db.query(query, [email], (err, results) => {
         if (err) return res.status(500).send('Error en el servidor.');
@@ -73,7 +83,7 @@ app.post('/login', async (req, res) => {
     });
 });
 
-// Middleware para proteger rutas
+// Middleware de autenticación
 function verifyToken(req, res, next) {
     const token = req.headers['authorization'];
     if (!token) return res.status(403).send('Token requerido.');
@@ -86,7 +96,7 @@ function verifyToken(req, res, next) {
     });
 }
 
-// Ruta protegida (solo para roles específicos)
+// Ruta protegida de ejemplo
 app.get('/protected', verifyToken, (req, res) => {
     if (req.userRole === 1) {
         res.send('Acceso permitido para superadmin.');
@@ -94,8 +104,12 @@ app.get('/protected', verifyToken, (req, res) => {
         res.status(403).send('Acceso denegado.');
     }
 });
-app.use('/api/clientes', clienteRoutes);
 
-app.listen(3000,'0.0.0.0', () => {
+// Rutas principales
+app.use('/api/clientes', clienteRoutes); // <- asegúrate que las rutas dentro estén bien
+app.use('/api/auth', loginRoutes);
+
+// Iniciar servidor
+app.listen(3000, '0.0.0.0', () => {
     console.log('Servidor corriendo en el puerto 3000');
 });

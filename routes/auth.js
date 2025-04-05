@@ -1,7 +1,9 @@
 const express = require('express');
 const { login, register, getUserRole } = require('../controllers/authController');
 const router = express.Router();
-const axios =  require('axios');
+const axios = require('axios');
+
+const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 
 router.post('/login', async (req, res) => {
     const captchaToken = req.body.captchaToken;
@@ -15,10 +17,8 @@ router.post('/login', async (req, res) => {
         });
 
         if (response.data.success) {
-            // Captcha verificado, proceder con el login
-            const { email, password } = req.body;
-            // Aquí haces la lógica de validación de usuario y contraseña
-            res.send({ success: true });
+            // Captcha OK ✅
+            return login(req, res); // 👈 Aquí llamas a tu login real
         } else {
             res.status(400).send({ success: false, message: 'Captcha no válido' });
         }
@@ -26,7 +26,8 @@ router.post('/login', async (req, res) => {
         res.status(500).send({ success: false, message: 'Error en la validación de Captcha' });
     }
 });
+
 router.post('/register', register);
-router.get('/role/:idusuario', getUserRole);  // Para obtener el rol del usuario
+router.get('/role/:idusuario', getUserRole);
 
 module.exports = router;

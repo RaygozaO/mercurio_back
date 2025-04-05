@@ -26,63 +26,91 @@ router.get('/colonias/:codigoPostal', async (req, res) => {
 
 
 // Agregar cliente, usuario y domicilio
-router.post('/api/clientes/crear', async (req, res) => {
-    const { nombrecliente, apellidopaterno, apellidomaterno, telefono, nombreUsuario, email, password, rol, calle, numero, interior, codigopostal, colonia } = req.body;
-
+router.post('/crear', async (req, res) => {
     try {
-        // Parte 1: Obtener datos del domicilio basado en código postal
+        console.log('✅ Paso 1 - BODY recibido:', req.body);
+
+        const { cliente, usuario, domicilio } = req.body;
+
+        if (!cliente || !usuario || !domicilio) {
+            console.log('❌ Faltan datos en el body');
+            return res.status(400).json({ error: 'Faltan datos' });
+        }
+
+        console.log('✅ Paso 2 - Buscando colonia y CP...');
         const domicilioQuery = `
       SELECT cp.idcodigopostal, col.idcolonia, mun.idmunicipio, ent.identidadfederativa
       FROM codigopostal cp
       JOIN colonias col ON cp.idcodigopostal = col.id_codigopostal
       JOIN municipio mun ON col.id_municipio = mun.idmunicipio
       JOIN entidadfederativa ent ON mun.id_entidadfederativa = ent.identidadfederativa
-      WHERE cp.codigopostal = ?`;
+      WHERE cp.codigopostal = ? AND col.nombrecolonia = ?
+    `;
+        const [rows] = await db.query(domicilioQuery, [domicilio.codigopostal, domicilio.coloniasSelected]);
 
-        const [domicilio] = await db.query(domicilioQuery, [codigopostal]);
-
-        if (!domicilio) {
-            return res.status(400).json({ error: 'Domicilio no encontrado' });
+        if (!rows || rows.length === 0) {
+            console.log('❌ No se encontró combinación CP + colonia');
+            return res.status(400).json({ error: 'Colonia no encontrada' });
         }
 
-        // Parte 2: Insertar en la tabla de domicilio
+        const datosDomicilio = rows[0];
+        console.log('✅ Paso 3 - Insertando domicilio...', datosDomicilio);
+
         const domicilioInsertQuery = `
-      INSERT INTO direccioncliente (calle, numero, interior, id_cp, id_colonia, id_municipio, id_entidad) 
-      VALUES (?, ?, ?, ?, ?, ?, ?)`;
-
-        const domicilioResult = await db.query(domicilioInsertQuery, [
-            calle, numero, interior, domicilio.idcodigopostal, domicilio.idcolonia, domicilio.idmunicipio, domicilio.identidadfederativa
+      INSERT INTO domicilio (calle, numero, interior, id_cp, id_colonia, id_municipio, id_entidad)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `;
+        const [domicilioResult] = await db.query(domicilioInsertQuery, [
+            domicilio.calle,
+            domicilio.numero,
+            domicilio.interior || '',
+            datosDomicilio.idcodigopostal,
+            datosDomicilio.idcolonia,
+            datosDomicilio.idmunicipio,
+            datosDomicilio.identidadfederativa
         ]);
-
         const idDomicilio = domicilioResult.insertId;
 
-        // Parte 3: Insertar usuario
+        console.log('✅ Paso 4 - Insertando usuario...');
+        const bcrypt = require('bcryptjs');
+        const hashedPass = bcrypt.hashSync(usuario.password, 8);
+
         const usuarioInsertQuery = `
-      INSERT INTO usuarios (pass, nombreusuario, email, enabled, id_rol)
-      VALUES (?, ?, ?, 1, ?)`;
-
-        const usuarioResult = await db.query(usuarioInsertQuery, [
-            password, nombreUsuario, email, rol
+      INSERT INTO usuarios (nombreusuario, email, pass, enabled, id_rol)
+      VALUES (?, ?, ?, 1, ?)
+    `;
+        const [usuarioResult] = await db.query(usuarioInsertQuery, [
+            usuario.nombreusuario,
+            usuario.email,
+            hashedPass,
+            2 // rol cliente
         ]);
-
         const idUsuario = usuarioResult.insertId;
 
-        // Parte 4: Insertar cliente
+        console.log('✅ Paso 5 - Insertando cliente...');
         const clienteInsertQuery = `
-      INSERT INTO clientes (nombrecliente, apellidopaterno, apellidomaterno, telefono, id_usuario, id_domicilio)
-      VALUES (?, ?, ?, ?, ?, ?)`;
-
+      INSERT INTO cliente (nombrecliente, apellidopaterno, apellidomaterno, telefono, id_usuario, id_domicilio)
+      VALUES (?, ?, ?, ?, ?, ?)
+    `;
         await db.query(clienteInsertQuery, [
-            nombrecliente, apellidopaterno, apellidomaterno, telefono, idUsuario, idDomicilio
+            cliente.nombrecliente,
+            cliente.apellidopaterno,
+            cliente.apellidomaterno,
+            cliente.telefono,
+            idUsuario,
+            idDomicilio
         ]);
 
-        return res.status(200).json({ message: 'Cliente creado exitosamente' });
+        console.log('✅ Cliente registrado correctamente');
+        res.status(201).json({ message: 'Cliente creado exitosamente' });
 
     } catch (error) {
-        console.error(error);
-        return res.status(500).json({ error: 'Error en el servidor' });
+        console.error('❌ Error en el servidor:', error);
+        res.status(500).json({ error: 'Error en el servidor' });
     }
 });
+
+
 router.get('/clientes', (req, res) => {
     const query = 'SELECT * FROM cliente';
     db.query(query, (err, results) => {

@@ -1,7 +1,6 @@
 const { DataTypes } = require('sequelize');
-const sequelize = require('../config/database'); // Importa la configuración de tu base de datos
+const sequelize = require('../config/database');
 
-// Definir el modelo Paciente usando Sequelize
 const Paciente = sequelize.define('Paciente', {
     nombre: {
         type: DataTypes.STRING,
@@ -25,33 +24,30 @@ const Paciente = sequelize.define('Paciente', {
         unique: true
     },
     direccion: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
     },
     numero: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
     },
     colonia: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
     },
     codigoPostal: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
     },
     ciudad: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
     },
     estado: {
-        type: DataTypes.STRING,
-        allowNull: true
+        type: DataTypes.STRING
+    },
+    id_usuario: { // 👈 clave foránea para autenticación
+        type: DataTypes.INTEGER,
+        allowNull: false
     }
 }, {
-    // Opciones adicionales del modelo
-    tableName: 'pacientes', // Define el nombre de la tabla en MySQL
-    timestamps: false // Evita que Sequelize genere automáticamente columnas de timestamps
+    tableName: 'pacientes',
+    timestamps: false
 });
 
 module.exports = Paciente;
