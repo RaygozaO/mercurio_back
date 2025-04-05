@@ -7,6 +7,7 @@ const RECAPTCHA_SECRET = process.env.RECAPTCHA_SECRET;
 
 router.post('/login', async (req, res) => {
     const captchaToken = req.body.captchaToken;
+    console.log('🧠 Token CAPTCHA recibido en backend:', captchaToken);
 
     try {
         const response = await axios.post(`https://www.google.com/recaptcha/api/siteverify`, null, {
@@ -15,6 +16,7 @@ router.post('/login', async (req, res) => {
                 response: captchaToken
             }
         });
+        console.log('🧪 Respuesta de Google CAPTCHA:', response.data);
 
         if (response.data.success) {
             // Captcha OK ✅
